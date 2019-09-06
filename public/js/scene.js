@@ -106,9 +106,13 @@ loader.load(
     'assets/jetfighter001.obj',
     // called when resource is loaded
     function(object) {
-        object.scale = new THREE.Vector3(100, 0.1, 0.1);
         scene.add(object);
         jetfighter = object;
+
+        // var planeApprox = new THREE.BoxBufferGeometry(6, 3, 10);
+        // var cube = new THREE.Mesh(planeApprox, new THREE.MeshToonMaterial({color:0xff0000}));
+        // cube.position = jetfighter.position;
+        // scene.add(cube);
     },
     // called when loading is in progresses
     function(xhr) {
@@ -120,15 +124,24 @@ loader.load(
     }
 );
 
-var boxGeometry = new THREE.BoxBufferGeometry(1, 1, 1);
-var basicMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ff00
-});
 
+/*
+    Create some random boxes
+*/
+function getRandomColor() {
+  var letters = '0123456789ABCDEF';
+  var color = '#';
+  for (var i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
+var boxGeometry = new THREE.BoxBufferGeometry(1, 1, 1);
 let NUM = 1000;
 let boxes = [];
 for (let i = 0; i < NUM; i++) {
-    boxes[i] = new THREE.Mesh(boxGeometry, toonMaterial);
+    boxes[i] = new THREE.Mesh(boxGeometry, new THREE.MeshToonMaterial({color:Math.floor(Math.random()*16777215)}));
     scene.add(boxes[i]);
 }
 
@@ -150,6 +163,18 @@ var quaternion = new THREE.Quaternion();
 
 physicsWorker.onmessage = function(event) {
     var data = event.data;
+    var jetPlane = event.data.jetPlane;
+
+    // console.log(jetPlane);
+    jetfighter.position.x = jetPlane.x;
+    jetfighter.position.y = jetPlane.y;
+    jetfighter.position.z = jetPlane.z;
+    quaternion.x = jetPlane.rx;
+    quaternion.y = jetPlane.ry;
+    quaternion.z = jetPlane.rz;
+    quaternion.w = jetPlane.rw;
+    jetfighter.rotation = new THREE.Euler().setFromQuaternion(quaternion);
+
     if (data.objects.length != NUM) return;
     for (var i = 0; i < NUM; i++) {
         var physicsObject = data.objects[i];
@@ -157,11 +182,10 @@ physicsWorker.onmessage = function(event) {
         renderObject.position.x = physicsObject[0];
         renderObject.position.y = physicsObject[1];
         renderObject.position.z = physicsObject[2];
-        quaternion.x = physicsObject[3];
-        quaternion.y = physicsObject[4];
-        quaternion.z = physicsObject[5];
-        quaternion.w = physicsObject[6];
-        renderObject.rotation = new THREE.Euler().setFromQuaternion(quaternion);
+        renderObject.quaternion.x = physicsObject[3];
+        renderObject.quaternion.y = physicsObject[4];
+        renderObject.quaternion.z = physicsObject[5];
+        renderObject.quaternion.w = physicsObject[6];
     }
     currFPS = data.currFPS;
     allFPS = data.allFPS;
