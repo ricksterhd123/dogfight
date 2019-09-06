@@ -58,29 +58,27 @@ var animate = function(tick) {
 
     // local transformations
     // move forwards/backwards/left/right
-    if (keyboard.pressed("W")) {
-        jetfighter.rotateOnAxis(new THREE.Vector3(1, 0, 0), -rotateAngle);
-    }
-    if (keyboard.pressed("S"))
-        jetfighter.rotateOnAxis(new THREE.Vector3(1, 0, 0), rotateAngle);
-    // rotate left/right/up/down
-    var rotation_matrix = new THREE.Matrix4().identity();
-    if (keyboard.pressed("A"))
-        jetfighter.rotateOnAxis(new THREE.Vector3(0, 0, 1), rotateAngle);
-    if (keyboard.pressed("D"))
-        jetfighter.rotateOnAxis(new THREE.Vector3(0, 0, 1), -rotateAngle);
-    if (keyboard.pressed("R"))
-        jetfighter.rotateOnAxis(new THREE.Vector3(1, 0, 0), rotateAngle);
-    if (keyboard.pressed("F"))
-        jetfighter.rotateOnAxis(new THREE.Vector3(1, 0, 0), -rotateAngle);
 
-    if (keyboard.pressed("Z")) {
-        jetfighter.position.set(0, 25.1, 0);
-        jetfighter.rotation.set(0, -Math.PI * 0.5, 0);
+    var data = {x:0,y:0,z:0,w:0};
+    if (keyboard.pressed("W")) {
+        //jetfighter.rotateOnAxis(new THREE.Vector3(1, 0, 0), -rotateAngle);
+        // data.x = jetfighter.quaternion.x;
+        // data.y = jetfighter.quaternion.y;
+        // data.z = jetfighter.quaternion.z;
+        // data.w = jetfighter.quaternion.w;
+        physicsWorker.postMessage({type:'control', key:'W'});
     }
+    
+    if (keyboard.pressed("S"))
+        physicsWorker.postMessage({type:'control', key:'S'});
+    if (keyboard.pressed("A"))
+        physicsWorker.postMessage({type:'control', key:'S'});
+    if (keyboard.pressed("D"))
+        physicsWorker.postMessage({type:'control', key:'D'});
+
 
     //jetfighter.translateZ(-moveDistance);
-    var relativeCameraOffset = new THREE.Vector3(0, 10, 20);
+    var relativeCameraOffset = new THREE.Vector3(0, 10, -20);
     var cameraOffset = relativeCameraOffset.applyMatrix4(jetfighter.matrixWorld);
     camera.position.x = cameraOffset.x;
     camera.position.y = cameraOffset.y;
@@ -169,11 +167,10 @@ physicsWorker.onmessage = function(event) {
     jetfighter.position.x = jetPlane.x;
     jetfighter.position.y = jetPlane.y;
     jetfighter.position.z = jetPlane.z;
-    quaternion.x = jetPlane.rx;
-    quaternion.y = jetPlane.ry;
-    quaternion.z = jetPlane.rz;
-    quaternion.w = jetPlane.rw;
-    jetfighter.rotation = new THREE.Euler().setFromQuaternion(quaternion);
+    jetfighter.quaternion.x = jetPlane.rx;
+    jetfighter.quaternion.y = jetPlane.ry;
+    jetfighter.quaternion.z = jetPlane.rz;
+    jetfighter.quaternion.w = jetPlane.rw;
 
     if (data.objects.length != NUM) return;
     for (var i = 0; i < NUM; i++) {
@@ -190,7 +187,7 @@ physicsWorker.onmessage = function(event) {
     currFPS = data.currFPS;
     allFPS = data.allFPS;
 };
-physicsWorker.postMessage(NUM);
+physicsWorker.postMessage({type:'start', data: NUM});
 
 /*
 	Start rendering

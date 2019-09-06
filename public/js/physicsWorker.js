@@ -1,7 +1,10 @@
 var Module = {
     TOTAL_MEMORY: 256 * 1024 * 1024
 };
-
+var eventType = {
+    control: 'control',
+    start: 'start'
+}
 importScripts('./ammo.js/builds/ammo.js');
 
 Ammo().then(function(Ammo) {
@@ -94,7 +97,7 @@ Ammo().then(function(Ammo) {
 
         var startTransform = new Ammo.btTransform();
         startTransform.setIdentity();
-        var mass = 1;
+        var mass = 20;
         var localInertia = new Ammo.btVector3(0, 0, 0);
         planeShape.calculateLocalInertia(mass, localInertia);
 
@@ -149,7 +152,7 @@ Ammo().then(function(Ammo) {
     function simulate(dt) {
         dt = dt || 1;
 
-        dynamicsWorld.stepSimulation(dt, 2);
+        dynamicsWorld.stepSimulation(dt);
 
         var alpha;
         if (meanDt > 0) {
@@ -164,7 +167,11 @@ Ammo().then(function(Ammo) {
 
         var data = {
             objects: [],
-            jetPlane: {x:0, y:0, z:0},
+            jetPlane: {
+                x: 0,
+                y: 0,
+                z: 0
+            },
             currFPS: Math.round(1000 / meanDt),
             allFPS: Math.round(1000 / meanDt2)
         };
@@ -177,7 +184,7 @@ Ammo().then(function(Ammo) {
         }
         //console.log(jetPlane);
         //console.log(transform);
-        var transform = new Ammo.btTransform(); 
+        var transform = new Ammo.btTransform();
         var jetPlaneOrigin = jetPlane.getMotionState().getWorldTransform(transform);
 
 
@@ -192,30 +199,45 @@ Ammo().then(function(Ammo) {
         data.jetPlane.rw = transform.getRotation().w();
         postMessage(data);
 
-        if (timeToRestart()) resetPositions();
+        //if (timeToRestart()) resetPositions();
     }
 
     var interval = null;
 
     onmessage = function(event) {
-        NUM = event.data;
-        NUMRANGE.length = 0;
-        while (NUMRANGE.length < NUM) NUMRANGE.push(NUMRANGE.length + 1);
+        console.log(event);
+        if (event.data.type == eventType.start) {
+            NUM = event.data.data;
+            NUMRANGE.length = 0;
+            while (NUMRANGE.length < NUM) NUMRANGE.push(NUMRANGE.length + 1);
 
-        frame = 1;
-        meanDt = meanDt2 = 0;
+            frame = 1;
+            meanDt = meanDt2 = 0;
 
-        startUp();
+            startUp();
 
-        var last = Date.now();
+            var last = Date.now();
 
-        function mainLoop() {
-            var now = Date.now();
-            simulate(now - last);
-            last = now;
+            function mainLoop() {
+                var now = Date.now();
+                simulate(now - last);
+                last = now;
+            }
+
+            if (interval) clearInterval(interval);
+            interval = setInterval(mainLoop, 1000 / 60);
+        } else if (event.data.type == eventType.control) {
+            var transform = new Ammo.btTransform();
+            var jetPlaneOrigin = jetPlane.getMotionState().getWorldTransform(transform);
+
+            if (event.data.key == "W")
+                jetPlane.applyForce(new Ammo.btVector3(0,0,1000), jetPlaneOrigin);
+            if (event.data.key == "S")
+                jetPlane.applyForce(new Ammo.btVector3(0,0,-1000), jetPlaneOrigin);
+            if (event.data.key == "A")
+                jetPlane.applyForce(new Ammo.btVector3(10,0,0), jetPlaneOrigin);
+            if (event.data.key == "D")
+                jetPlane.applyForce(new Ammo.btVector3(-10,0,0), jetPlaneOrigin);
         }
-
-        if (interval) clearInterval(interval);
-        interval = setInterval(mainLoop, 1000 / 60);
     }
 });
