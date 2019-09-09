@@ -1,102 +1,59 @@
-var currFPS = 0;
-var allFPS = 0;
+let worker = null;
 
-/* 
-	Create scene 
+
+/*
+	Create scene
 */
-var scene = new THREE.Scene();
-
+let currFPS = 0;
+let allFPS = 0;
+let scene = new THREE.Scene();
 // TODO: orbit Camera
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
 camera.position.y = 5;
-var controls = new THREE.PointerLockControls(camera);
+let controls = new THREE.PointerLockControls(camera);
 console.log(controls);
 controls.lock();
 
-// White directional light at half intensity shining from the top.
-var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
-scene.add( directionalLight );
+var light = new THREE.PointLight( 0xffffff, 1, 1000 );
+light.position.set( 0, 50, 0 );
+scene.add( light );
 
-var planeGeometry = new THREE.PlaneGeometry(1000, 1000, 1000);
-var toonMaterial = new THREE.MeshToonMaterial({
+let planeGeometry = new THREE.PlaneGeometry(2000, 2000, 2000);
+let toonMaterial = new THREE.MeshToonMaterial({
     color: 0x00ff00
 });
 
-var plane = new THREE.Mesh(planeGeometry, toonMaterial);
+let plane = new THREE.Mesh(planeGeometry, toonMaterial);
 plane.rotateX(-Math.PI * 0.5);
 plane.position.y = -0.5;
 scene.add(plane);
 
-
-var outElement = null;
-var lastFPS = 0;
 /*
-	Debug FPS
+    Create some random boxes
 */
-function showFPS() {
-    if (!outElement) outElement = document.getElementById('out');
-    var now = Date.now();
-    if (now - lastFPS > 333) {
-        outElement.innerHTML = currFPS + ' / ' + allFPS;
-        lastFPS = now;
+function getRandomColor() {
+    let letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
     }
+    return color;
 }
 
-
-var keyboard = new THREEx.KeyboardState();
-var jetfighter = null;
-var jetfighterPoints = [];
-var prevTick = 0;
-var animate = function(tick) {
-    requestAnimationFrame(animate);
-    showFPS();
-    if (!jetfighter) return;
-    var elapsedTime = tick - prevTick;
-    var delta = clock.getDelta(); // seconds.
-    var moveDistance = 20 * delta; // 200 pixels per second
-    var rotateAngle = Math.PI / 2 * delta; // pi/2 radians (90 degrees) per second
-
-    // local transformations
-    // move forwards/backwards/left/right
-
-    var data = {x:0,y:0,z:0,w:0};
-    if (keyboard.pressed("W")) {
-        //jetfighter.rotateOnAxis(new THREE.Vector3(1, 0, 0), -rotateAngle);
-        // data.x = jetfighter.quaternion.x;
-        // data.y = jetfighter.quaternion.y;
-        // data.z = jetfighter.quaternion.z;
-        // data.w = jetfighter.quaternion.w;
-        physicsWorker.postMessage({type:'control', key:'W'});
-    }
-    
-    if (keyboard.pressed("S"))
-        physicsWorker.postMessage({type:'control', key:'S'});
-    if (keyboard.pressed("A"))
-        physicsWorker.postMessage({type:'control', key:'S'});
-    if (keyboard.pressed("D"))
-        physicsWorker.postMessage({type:'control', key:'D'});
-
-
-    //jetfighter.translateZ(-moveDistance);
-    var relativeCameraOffset = new THREE.Vector3(0, 10, -20);
-    var cameraOffset = relativeCameraOffset.applyMatrix4(jetfighter.matrixWorld);
-    camera.position.x = cameraOffset.x;
-    camera.position.y = cameraOffset.y;
-    camera.position.z = cameraOffset.z;
-
-
-    var relativeJetOffset = new THREE.Vector3(0, 0, 0);
-    var jetOffset = relativeJetOffset.applyMatrix4(jetfighter.matrixWorld);
-    camera.lookAt(jetOffset);
-    //camera.updateMatrix();
-    //camera.updateProjectionMatrix();
-    renderer.render(scene, camera);
-};
+let boxGeometry = new THREE.BoxBufferGeometry(1, 1, 1);
+let NUM = 1000;
+let boxes = [];
+for (let i = 0; i < NUM; i++) {
+    boxes[i] = new THREE.Mesh(boxGeometry, new THREE.MeshToonMaterial({
+        color: Math.floor(Math.random() * 16777215)
+    }));
+    scene.add(boxes[i]);
+}
 
 // instantiate a loader
-var loader = new THREE.OBJLoader();
-var renderer = null;
-var clock = null;
+let loader = new THREE.OBJLoader();
+let renderer = null;
+let clock = null;
 
 // load a resource
 loader.load(
@@ -104,13 +61,15 @@ loader.load(
     'assets/jetfighter001.obj',
     // called when resource is loaded
     function(object) {
-        scene.add(object);
-        jetfighter = object;
+        // scene.add(object);
+        // jetfighter = object;
 
-        // var planeApprox = new THREE.BoxBufferGeometry(6, 3, 10);
-        // var cube = new THREE.Mesh(planeApprox, new THREE.MeshToonMaterial({color:0xff0000}));
-        // cube.position = jetfighter.position;
-        // scene.add(cube);
+        let planeApprox = new THREE.BoxBufferGeometry(6, 3, 10);
+        jetfighter = new THREE.Mesh(planeApprox, new THREE.MeshToonMaterial({
+            color: 0xff0000
+        }));
+        //cube.position = jetfighter.position;
+        scene.add(jetfighter);
     },
     // called when loading is in progresses
     function(xhr) {
@@ -123,45 +82,22 @@ loader.load(
 );
 
 
+let outElement = null;
+let lastFPS = 0;
 /*
-    Create some random boxes
+	Debug FPS
 */
-function getRandomColor() {
-  var letters = '0123456789ABCDEF';
-  var color = '#';
-  for (var i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
-  }
-  return color;
+function showFPS() {
+    if (!outElement) outElement = document.getElementById('out');
+    let now = Date.now();
+    if (now - lastFPS > 333) {
+        outElement.innerHTML = currFPS + ' / ' + allFPS;
+        lastFPS = now;
+    }
 }
 
-var boxGeometry = new THREE.BoxBufferGeometry(1, 1, 1);
-let NUM = 1000;
-let boxes = [];
-for (let i = 0; i < NUM; i++) {
-    boxes[i] = new THREE.Mesh(boxGeometry, new THREE.MeshToonMaterial({color:Math.floor(Math.random()*16777215)}));
-    scene.add(boxes[i]);
-}
-
-
-
-
-/*
-	Start physics
-*/
-var physicsWorker = null;
-var nextPhysicsWorker = new Worker('js/physicsWorker.js');
-
-if (physicsWorker) physicsWorker.terminate();
-physicsWorker = nextPhysicsWorker;
-nextPhysicsWorker = null;
-
-if (!physicsWorker) physicsWorker = new Worker('worker.js');
-var quaternion = new THREE.Quaternion();
-
-physicsWorker.onmessage = function(event) {
-    var data = event.data;
-    var jetPlane = event.data.jetPlane;
+function update(data) {
+    let jetPlane = data.jetPlane;
 
     // console.log(jetPlane);
     jetfighter.position.x = jetPlane.x;
@@ -173,9 +109,9 @@ physicsWorker.onmessage = function(event) {
     jetfighter.quaternion.w = jetPlane.rw;
 
     if (data.objects.length != NUM) return;
-    for (var i = 0; i < NUM; i++) {
-        var physicsObject = data.objects[i];
-        var renderObject = boxes[i];
+    for (let i = 0; i < NUM; i++) {
+        let physicsObject = data.objects[i];
+        let renderObject = boxes[i];
         renderObject.position.x = physicsObject[0];
         renderObject.position.y = physicsObject[1];
         renderObject.position.z = physicsObject[2];
@@ -187,16 +123,82 @@ physicsWorker.onmessage = function(event) {
     currFPS = data.currFPS;
     allFPS = data.allFPS;
 };
-physicsWorker.postMessage({type:'start', data: NUM});
+
+let keyboard = new THREEx.KeyboardState();
+let jetfighter = null;
+let jetfighterPoints = [];
+let prevTick = 0;
+
+let animate = function(tick) {
+    requestAnimationFrame(animate);
+    if (!jetfighter) return;
+    showFPS();
+
+
+    // get INPUT and post
+    if (keyboard.pressed("W"))
+        worker.postControl("W");
+    if (keyboard.pressed("S"))
+        worker.postControl("S");
+    if (keyboard.pressed("A"))
+        worker.postControl("A");
+    if (keyboard.pressed("D"))
+        worker.postControl("D");
+    if (keyboard.pressed("Q"))
+        worker.postControl("Q");
+    if (keyboard.pressed("E"))
+        worker.postControl("E");
+    if (keyboard.pressed("shift"))
+        worker.postControl("shift");
+    if (keyboard.pressed("ctrl"))
+        worker.postControl("ctrl");
+
+    // UPDATE positions from physics
+    worker.tick();
+    update(worker.getData());
+
+    // UPDATE camera
+    let relativeCameraOffset = new THREE.Vector3(0, 10, -20);
+    let cameraOffset = relativeCameraOffset.applyMatrix4(jetfighter.matrixWorld);
+    camera.position.x = cameraOffset.x;
+    camera.position.y = cameraOffset.y;
+    camera.position.z = cameraOffset.z;
+
+    let relativeJetOffset = new THREE.Vector3(0, 0, 0);
+    let jetOffset = relativeJetOffset.applyMatrix4(jetfighter.matrixWorld);
+    camera.lookAt(jetOffset);
+
+    // DRAW
+    //camera.updateMatrix();
+    //camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+};
+
 
 /*
-	Start rendering
+	Start physics
 */
-clock = new THREE.Clock();
-renderer = new THREE.WebGLRenderer({
-    alpha: true
-});
-renderer.setClearColor(0x000000, 0);
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-animate(0);
+
+document.body.onload = function() {
+    Ammo().then(function(ammo) {
+        worker = new physicsWorker(ammo, 1000)
+        worker.startUp();
+        /*
+            Start rendering
+        */
+        clock = new THREE.Clock();
+        renderer = new THREE.WebGLRenderer({
+            alpha: true
+        });
+        renderer.setClearColor(0x000000, 0);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        animate(0);
+    });
+
+
+
+
+
+
+};
