@@ -1,0 +1,3 @@
+[submodule "ammo.js"]
+	path = public/js/ammo.js
+	url = https://github.com/ricksterhd123/ammo.js.git
