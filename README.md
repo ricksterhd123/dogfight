@@ -12,7 +12,6 @@ LeftShift - Throttle up
 LeftCTRL - Throttle down
 
 # TODO:
-- [ ] Attempt to fix WebIDL binder in emscripten
 - [ ] Apply forces for lift, roll, pitch and yaw.
 - [ ] Improve camera movement (GTA inspired)
 - [ ] Add rockets
@@ -21,4 +20,3 @@ LeftCTRL - Throttle down
 - [ ] Add hiscores
 - [ ] Add sounds + effects + terrain + finishing touches
 
-# Test
